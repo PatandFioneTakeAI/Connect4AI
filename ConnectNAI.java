@@ -5,6 +5,7 @@ public class ConnectNAI {
 	
 	private static final int DEPTH = 3;
 	private static final int WIN = 10000;
+	private static final int LOSE = -10000;
 
 	//Game tracker
 	private boolean meHasPopped;
@@ -22,6 +23,21 @@ public class ConnectNAI {
 		this.meHasPopped = false;
 		this.opponentHasPopped = false;
 		this.manageRefereeInteractions();
+	}
+	
+	private void printGameBoard(){
+		for(int col=0;col<gameBoard.length;col++){
+			for(int row=0;row<gameBoard[col].length;row++){
+				if(gameBoard[col][row]==EToken.EMPTY)
+					System.out.print("-");
+				else if(gameBoard[col][row]==EToken.ME)
+					System.out.print("X");
+				else if(gameBoard[col][row]==EToken.OPPONENT)
+					System.out.print("O");
+			}
+			System.out.println();
+		}
+		System.out.println("\n");
 	}
 	
 	// Handles all interaction between the referee and the AI
@@ -49,27 +65,42 @@ public class ConnectNAI {
 		
 		if(playerNumber == firstPlayer){
 			Move move = miniMax(this.gameBoard,Integer.MIN_VALUE,Integer.MAX_VALUE,ConnectNAI.DEPTH);
+			this.gameBoard = move.getBoard();
 			System.out.println(move.getInstructions());
+			printGameBoard();
 		}
 		
 		//while win condition
-		while(true){
-			this.ai_meHasPopped = this.meHasPopped;
-			this.ai_opponentHasPopped = this.opponentHasPopped;
-			
+		while(true){			
+			//Process Opponent Move
 			String[] opponentMove = scanner.nextLine().split(" ");
 			int opponentColumn = Integer.parseInt(opponentMove[0]);
 			boolean isPop = opponentMove[1].equals("0");
 			if(isPop){
-				this.pop(this.gameBoard, opponentColumn, false);
-				opponentHasPopped=true;
+				this.gameBoard = this.pop(this.gameBoard, opponentColumn, false);
+				this.opponentHasPopped = true;
 			}
 			else
-				this.place(this.gameBoard, opponentColumn, false);
+				this.gameBoard = this.place(this.gameBoard, opponentColumn, false);
 			
+			//If opponent won, quit
+			if(this.eval(gameBoard) == ConnectNAI.LOSE)
+				break;
+			
+			//Log if opponent Popped
+			this.ai_opponentHasPopped = this.opponentHasPopped;
+			
+			//Run minimax
 			Move move = miniMax(this.gameBoard,Integer.MIN_VALUE,Integer.MAX_VALUE,ConnectNAI.DEPTH);
+			this.gameBoard = move.getBoard();
+			if(move.isPop())
+				this.meHasPopped = true;
 			System.out.println(move.getInstructions());
+
+			//Log if ai popped
+			this.ai_meHasPopped = this.meHasPopped;
 			
+			//If ai won, quit
 			if(move.getScore()==ConnectNAI.WIN)
 				break;
 		}
