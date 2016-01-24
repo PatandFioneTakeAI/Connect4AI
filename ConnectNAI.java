@@ -69,7 +69,7 @@ public class ConnectNAI {
 		return currentScore;
 	}
 	
-	
+	//Executes logic for 'min player' turn
 	private int min(EToken[][] board, int alpha, int beta, int depthGoal, int currentDepth){
 		if(depthGoal==currentDepth)
 			return eval(board);
