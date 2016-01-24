@@ -59,48 +59,52 @@ public class ConnectNAI {
 	}
 	
 	//Initializes mini-max process
-	private int miniMax(EToken[][] board, int alpha, int beta, int depth){
-		return this.max(board, alpha, beta, -ConnectNAI.DEPTH, 0);
+	private Move miniMax(EToken[][] board, int alpha, int beta, int depth){
+		return this.max(new Move(board,), alpha, beta, -ConnectNAI.DEPTH, 0);
 	}
 	
 	//Executes logic for 'max player' turn
-	private int max(EToken[][] board, int alpha, int beta, int depthGoal, int currentDepth){
-		if(currentDepth==depthGoal)
-			return eval(board);
+	private Move max(Move move, int alpha, int beta, int depthGoal, int currentDepth){
+		Move minMove = null;
+		EToken[][] board = move.getBoard();
 		
-		//Compile list of moves
-		ArrayList<EToken[][]> children = new ArrayList<EToken[][]>();
+		if(depthGoal==currentDepth){
+			move.setValue(eval(move.getBoard()));
+			return move;
+		}
+		
+		//Build array of potential moves
+		ArrayList<Move> children = new ArrayList<EToken[][]>();
 		for(int i=0; i<board[0].length; i++){
 			if(canPlace(board,i,true))
-				children.add(this.place(board,i,true));
+				children.add(new Move(this.place(board,i,true),i,1));
 			if(canPop(board,i,true))
-				children.add(this.pop(board,i,true));
+				children.add(new Move(this.pop(board,i,true),i,0));
 		}
 		
 		//Determine best move
 		int currentScore = Integer.MIN_VALUE;
-		EToken[][] bestCandidate = new EToken[board.length][board[0].length];
-		for(EToken[][] candidateBoard:children){
-			int score = min(candidateBoard,alpha,beta,depthGoal,currentDepth+1);
-			if(score > currentScore){
-				bestCandidate = candidateBoard;
-				currentScore = score;
-			}
+		for(Move candidateMove:children){
+			minMove = min(candidateMove,alpha,beta,depthGoal,currentDepth+1);
+			currentScore = Math.max(currentScore, minMove.getScore());
 			alpha = Math.max(currentScore, alpha);
 			
 			//Prune
 			if(alpha > beta)
-				break;
+				return minMove;
 		}
-		if(currentDepth==0)
-			this.candidateBoard = bestCandidate;
-		return currentScore;
+		return minMove;
 	}
 	
 	//Executes logic for 'min player' turn
 	private Move min(Move move, int alpha, int beta, int depthGoal, int currentDepth){
-		if(depthGoal==currentDepth)
-			return eval(board);
+		Move maxMove = null;
+		EToken[][] board = move.getBoard();
+		
+		if(depthGoal==currentDepth){
+			move.setScore(eval(board));
+			return move;
+		}
 		
 		//Build array of potential moves
 		ArrayList<Move> children = new ArrayList<EToken[][]>();
@@ -114,7 +118,7 @@ public class ConnectNAI {
 		//Evaluate moves
 		int currentScore = Integer.MAX_VALUE;
 		for(Move candidateMove:children){
-			Move maxMove = max(candidateMove,alpha,beta,depthGoal,currentDepth+1);
+			maxMove = max(candidateMove,alpha,beta,depthGoal,currentDepth+1);
 			currentScore = Math.min(currentScore, maxMove.getScore());
 			beta = Math.min(currentScore, beta);
 			
@@ -397,11 +401,5 @@ public class ConnectNAI {
 
 	public static void main(String[] args){
 		new ConnectNAI();
-	}
-	
-	private enum EToken {
-		ME,
-		OPPONENT,
-		EMPTY
 	}
 }
