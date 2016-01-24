@@ -5,7 +5,7 @@ public class ConnectNAI {
 	
 	private static final int DEPTH = 3;
 	private static final int WIN = 10000;
-
+	private static final int LOSE = -10000;
 	//Game tracker
 	private boolean meHasPopped;
 	private boolean opponentHasPopped;
@@ -231,17 +231,21 @@ public class ConnectNAI {
 			if(totalEval > ConnectNAI.WIN)
 				return ConnectNAI.WIN;
 			
+			if(totalEval < ConnectNAI.LOSE)
+				return ConnectNAI.LOSE;
+			
 			return totalEval;
 		}
 
 	//diagonal scan right to left
 	private int diagonalRightEval(EToken[][] board){
-		boolean isOpp, isMine;
+		boolean isOpp, isMine, containsEmptySpace;
 		int runningTotal= 0, myPoints = 0, oppPoints =0;
 		for(int i= board[0].length; i > -1 ; i--){
 			for(int j = board.length -1 ; j > -1; j--){
 				isMine = false;
 				isOpp= false;
+				containsEmptySpace = false;
 				myPoints=0;
 				oppPoints=0;
 				
@@ -257,12 +261,24 @@ public class ConnectNAI {
 					if(isMine && isOpp){
 						break;
 					}
+					if(board[i-k][j-k] == EToken.EMPTY){
+						containsEmptySpace = true;
+						
+					}
 				}
 				if(isMine && !isOpp){
 					runningTotal += myPoints;
 				}
 				else if(isOpp && !isMine){
 					runningTotal += oppPoints;
+				}
+				
+				if(isMine && !containsEmptySpace){
+					runningTotal += ConnectNAI.WIN;
+				}
+				
+				else if(isOpp && containsEmptySpace){
+					runningTotal += ConnectNAI.LOSE;
 				}
 			}
 		}
@@ -271,7 +287,7 @@ public class ConnectNAI {
 
 	//diagonal scan left to right
 	private int diagonalLeftEval(EToken[][] board){
-		boolean isOpp, isMine;
+		boolean isOpp, isMine, containsSpace;
 		int runningTotal= 0, myPoints = 0, oppPoints =0;
 		for(int i=board[0].length; i > -1 ; i++){
 			for(int j=0; j < board.length; j++){
@@ -279,6 +295,7 @@ public class ConnectNAI {
 				isOpp= false;
 				myPoints=0;
 				oppPoints=0;
+				containsSpace = true;
 				for(int k=0; k < this.winningLength; k++){
 					if(board[i-k][j+k] == EToken.ME){
 						isMine = true;
@@ -288,6 +305,11 @@ public class ConnectNAI {
 						isOpp = true;
 						oppPoints += gameBoardWeight[i-k][j+k];
 					}
+					
+					if(board[i-k][j+k] == EToken.EMPTY){
+						containsSpace = true;
+						
+					}
 					if(isMine && isOpp){
 						break;
 					}
@@ -295,8 +317,16 @@ public class ConnectNAI {
 				if(isMine && !isOpp){
 					runningTotal += myPoints;
 				}
-				if(isOpp && !isMine){
+				else if(isOpp && !isMine){
 					runningTotal += oppPoints;
+				}
+				
+				if(isMine && !containsSpace){
+					runningTotal += ConnectNAI.WIN;
+				}
+				
+				else if(isOpp && containsSpace){
+					runningTotal += ConnectNAI.LOSE;
 				}
 			}
 		}
@@ -309,31 +339,44 @@ public class ConnectNAI {
 		int horizontal = board.length;
 		int vertical = board[0].length;
 		int runningTotal = 0, myTotal = 0, oppTotal = 0;
-		boolean isMyPoints;
-		boolean isOppPoints;
+		boolean isMyPoints, isOppPoints, containsSpace;
+	
 		for(int i = vertical-1; i > -1; i--){
 			myTotal = 0;
 			oppTotal = 0;
 			isMyPoints = false;
 			isOppPoints = false;
+			containsSpace = false; 
 			for(int j = 0; j <= horizontal - winningLength; j++ )
 				for(int k = j; k < winningLength; k++){
-					//if board[i][k] == EToken.ME{
-					isMyPoints = true;
-					myTotal += gameBoardWeight[i][k];
-
-					//if == EToken.OPP
-					isOppPoints = true;
-					oppTotal -= gameBoardWeight[i][k];
+					if(board[i][k] == EToken.ME){
+						isMyPoints = true;
+						myTotal += gameBoardWeight[i][k];
+					}
+					if(board[i][k] == EToken.OPPONENT){
+						isOppPoints = true;
+						oppTotal -= gameBoardWeight[i][k];
+					}
+					if(board[i][k] == EToken.EMPTY){
+						containsSpace = true;
+					}
 					if(isOppPoints && isMyPoints)
 						break;
 				}
-			if(isOppPoints){
+			if(isOppPoints && !isMyPoints){
 				runningTotal += oppTotal;
 			}
 
-			if(isMyPoints){
+			else if(isMyPoints && !isOppPoints){
 				runningTotal +=  myTotal;
+			}
+			
+			if(isMyPoints && !containsSpace){
+				runningTotal += ConnectNAI.WIN;
+			}
+			
+			else if(isOppPoints && containsSpace){
+				runningTotal += ConnectNAI.LOSE;
 			}
 
 		}
@@ -346,32 +389,45 @@ public class ConnectNAI {
 		int horizontal = board.length;
 		int vertical = board[0].length;
 		int runningTotal = 0, myTotal = 0, oppTotal = 0;
-		boolean isMyPoints;
-		boolean isOppPoints;
+		boolean isMyPoints, isOppPoints, containsSpace;
 		for(int i = horizontal-1; i > -1; i--){
 			isMyPoints = false;
 			isOppPoints = false;
+			containsSpace = true; 
 			myTotal = 0;
 			oppTotal = 0;
 			
 			for(int j = 0; j <= vertical - this.winningLength; j++ )
 				for(int k = j; k < this.winningLength; k++){
-					//if board[i][k] == EToken.ME{
-					isMyPoints = true;
-					myTotal += gameBoardWeight[i][k];
-
-					//if == EToken.OPP
-					isOppPoints = true;
-					oppTotal -= gameBoardWeight[i][k];
+					if(board[i][k] == EToken.ME){
+						isMyPoints = true;
+						myTotal += gameBoardWeight[i][k];
+					}
+					if(board[i][k] == EToken.OPPONENT){
+						isOppPoints = true;
+						oppTotal -= gameBoardWeight[i][k];
+					}
+					if(board[i][k] == EToken.EMPTY){
+						containsSpace = true;
+					}
+					
 					if(isOppPoints && isMyPoints)
 						break;
 				}
-			if(isOppPoints){
+			if(isOppPoints && !isMyPoints){
 				runningTotal += oppTotal;
 			}
 
-			if(isMyPoints){
+			else if(isMyPoints && !isOppPoints){
 				runningTotal += myTotal;
+			}
+			
+			if(isMyPoints && !containsSpace){
+				runningTotal += ConnectNAI.WIN;
+			}
+			
+			else if(isOppPoints && containsSpace){
+				runningTotal += ConnectNAI.LOSE;
 			}
 		}
 
