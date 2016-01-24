@@ -1,10 +1,10 @@
 import java.util.ArrayList;
 import java.util.Scanner;
 
-
 public class ConnectNAI {
 	
 	private static final int DEPTH = 3;
+	private static final int WIN = 10000;
 
 	//Game tracker
 	private boolean meHasPopped;
@@ -14,11 +14,10 @@ public class ConnectNAI {
 	
 	//AI tracker
 	private boolean ai_meHasPopped;
-	private boolean ai_opponentHasPopped;	
-	private EToken[][] candidateBoard;
+	private boolean ai_opponentHasPopped;
 	private int[][] gameBoardWeight;
 	private int timeLimit;
-
+	
 	public ConnectNAI(){
 		this.meHasPopped = false;
 		this.opponentHasPopped = false;
@@ -48,19 +47,39 @@ public class ConnectNAI {
 		//Create weight-board
 		this.gameBoardWeight = this.assignWeight(boardWidth, boardHeight);
 		
-		if(playerNumber == firstPlayer)
-			miniMax(this.gameBoard,Integer.MIN_VALUE,Integer.MAX_VALUE,ConnectNAI.DEPTH);
+		if(playerNumber == firstPlayer){
+			Move move = miniMax(this.gameBoard,Integer.MIN_VALUE,Integer.MAX_VALUE,ConnectNAI.DEPTH);
+			System.out.println(move.getInstructions());
+		}
 		
-		//.....Somewhere goes:
-			this.miniMax(null,0,0,0);
-			candidateBoard.notify();
+		//while win condition
+		while(true){
+			this.ai_meHasPopped = this.meHasPopped;
+			this.ai_opponentHasPopped = this.opponentHasPopped;
+			
+			String[] opponentMove = scanner.nextLine().split(" ");
+			int opponentColumn = Integer.parseInt(opponentMove[0]);
+			boolean isPop = opponentMove[1].equals("0");
+			if(isPop){
+				this.pop(this.gameBoard, opponentColumn, false);
+				opponentHasPopped=true;
+			}
+			else
+				this.place(this.gameBoard, opponentColumn, false);
+			
+			Move move = miniMax(this.gameBoard,Integer.MIN_VALUE,Integer.MAX_VALUE,ConnectNAI.DEPTH);
+			System.out.println(move.getInstructions());
+			
+			if(move.getScore()==ConnectNAI.WIN)
+				break;
+		}
 		
 		scanner.close();
 	}
 	
 	//Initializes mini-max process
 	private Move miniMax(EToken[][] board, int alpha, int beta, int depth){
-		return this.max(new Move(board,), alpha, beta, -ConnectNAI.DEPTH, 0);
+		return this.max(new Move(board), alpha, beta, -ConnectNAI.DEPTH, 0);
 	}
 	
 	//Executes logic for 'max player' turn
@@ -69,12 +88,12 @@ public class ConnectNAI {
 		EToken[][] board = move.getBoard();
 		
 		if(depthGoal==currentDepth){
-			move.setValue(eval(move.getBoard()));
+			move.setScore(eval(move.getBoard()));
 			return move;
 		}
 		
 		//Build array of potential moves
-		ArrayList<Move> children = new ArrayList<EToken[][]>();
+		ArrayList<Move> children = new ArrayList<Move>();
 		for(int i=0; i<board[0].length; i++){
 			if(canPlace(board,i,true))
 				children.add(new Move(this.place(board,i,true),i,1));
@@ -84,16 +103,20 @@ public class ConnectNAI {
 		
 		//Determine best move
 		int currentScore = Integer.MIN_VALUE;
+		Move bestMove = null;
 		for(Move candidateMove:children){
 			minMove = min(candidateMove,alpha,beta,depthGoal,currentDepth+1);
-			currentScore = Math.max(currentScore, minMove.getScore());
+			if(minMove.getScore() > currentScore){
+				bestMove = minMove;
+				currentScore = Math.max(currentScore, minMove.getScore());
+			}
 			alpha = Math.max(currentScore, alpha);
 			
 			//Prune
 			if(alpha > beta)
-				return minMove;
+				return bestMove;
 		}
-		return minMove;
+		return bestMove;
 	}
 	
 	//Executes logic for 'min player' turn
@@ -107,7 +130,7 @@ public class ConnectNAI {
 		}
 		
 		//Build array of potential moves
-		ArrayList<Move> children = new ArrayList<EToken[][]>();
+		ArrayList<Move> children = new ArrayList<Move>();
 		for(int i=0; i<board[0].length; i++){
 			if(canPlace(board,i,true))
 				children.add(new Move(this.place(board,i,true),i,1));
@@ -117,16 +140,20 @@ public class ConnectNAI {
 		
 		//Evaluate moves
 		int currentScore = Integer.MAX_VALUE;
+		Move bestMove = null;
 		for(Move candidateMove:children){
 			maxMove = max(candidateMove,alpha,beta,depthGoal,currentDepth+1);
-			currentScore = Math.min(currentScore, maxMove.getScore());
+			if(maxMove.getScore() < currentScore){
+				bestMove = maxMove;
+				currentScore = Math.min(currentScore, maxMove.getScore());
+			}
 			beta = Math.min(currentScore, beta);
 			
 			//Prune
 			if(alpha > beta)
-				return maxMove;
+				return bestMove;
 		}
-		return maxMove;
+		return bestMove;
 	}
 	
 	//Determines if a 'place' move is legal or not
@@ -201,6 +228,9 @@ public class ConnectNAI {
 			//diagonal (R to L B to T)
 			totalEval += diagonalRightEval(board);
 
+			if(totalEval > ConnectNAI.WIN)
+				return ConnectNAI.WIN;
+			
 			return totalEval;
 		}
 

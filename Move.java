@@ -1,11 +1,13 @@
 
-
 public class Move {
 	EToken[][] board;
 	int score; 
 	int col; 
 	int type; 
 	
+	public Move(EToken[][] board){
+		this.board = board;
+	}
 	
 	public Move(EToken[][] board, int col, int type){
 		this.board = board; 
@@ -16,6 +18,10 @@ public class Move {
 	public String getInstructions(){
 		return this.col + " " + this.type;
 	
+	}
+	
+	public EToken[][] getBoard(){
+		return this.board;
 	}
 	
 	public int getScore(){
