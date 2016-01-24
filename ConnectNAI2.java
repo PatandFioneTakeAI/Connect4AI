@@ -4,23 +4,24 @@ import java.util.ArrayList;
 public class ConnectNAI {
 	
 	private static final int DEPTH = 3;
-	private static final int CONNECT = 4;
-
+	private static final int CONNECT = 4; 
+	
 	//Game tracker
 	private boolean meHasPopped;
 	private boolean opponentHasPopped;
+	private boolean boardWeightExecuted;
 	
 	//AI tracker
 	private boolean ai_meHasPopped;
 	private boolean ai_opponentHasPopped;
 	private EToken[][] candidateBoard;
-	private int[][] gameBoardWeight;
-
-
+	private int[][] gameBoardWeight; 
+	
 	public ConnectNAI(){
 		this.meHasPopped = false;
 		this.opponentHasPopped = false;
 		this.boardWeightExecuted = false;
+		
 		this.manageRefereeInteractions();
 	}
 	
@@ -156,33 +157,33 @@ public class ConnectNAI {
 		return newBoard;
 	}
 	
-
-
-	//Evaluates current board based on connectedness using values from boardWeight
+	
+	//Evaluates current board based on connectedness using values from boardWeight 
 	private int eval(EToken[][] board){
-			int totalEval = 0;
-			if(!boardWeightExecuted){
-				assignWeight(board);
-			}
-			//horizontal scan
-			totalEval += horizontalEval(board);
-
-			//vertical scan
-			totalEval += verticalEval(board);
-
-			//diagonal (L to R B to T)
-			totalEval += diagonalLeftEval(board);
-
-			//diagonal (R to L B to T)
-			totalEval += diagonalRightEval(board);
-
-			return totalEval;
+		int totalEval = 0;
+		if(!boardWeightExecuted){
+			assignWeight(board);
 		}
-
+		//horizontal scan
+		totalEval += horizontalEval(board);
+				
+		//vertical scan
+		totalEval += verticalEval(board);
+		
+		//diagonal (L to R B to T)
+		totalEval += diagonalLeftEval(board);
+		
+		//diagonal (R to L B to T)
+		totalEval += diagonalRightEval(board);
+		
+		return totalEval;
+	}
+	
+	//TODO: [Fiona]
 	//diagonal scan right to left
 	private int diagonalRightEval(EToken[][] board){
 		boolean isOpp, isMine;
-		int runningTotal= 0, myPoints = 0, oppPoints =0;
+		int runningTotal= 0, myPoints = 0, oppPoints =0; 
 		for(int i= board[0].length; i > -1 ; i--){
 			for(int j = board.length -1 ; j > -1; j--){
 				isMine = false;
@@ -195,7 +196,7 @@ public class ConnectNAI {
 						myPoints += gameBoardWeight[i-k][j-k];
 					}
 					if(/*board[i-k][j-k] is opp */){
-						isOpp = true;
+						isOpp = true; 
 						oppPoints += gameBoardWeight[i-k][j-k];
 					}
 					if(isMine && isOpp){
@@ -206,17 +207,17 @@ public class ConnectNAI {
 					runningTotal += myPoints;
 				}
 				if(isOpp && !isMine){
-					runningTotal += oppPoints;
+					runningTotal += oppPoints; 
 				}
 			}
 		}
 	}
-
-
-	//diagonal scan left to right
+	
+	//TODO: [Fiona]
+	//diagonal scan left to right 
 	private int diagonalLeftEval(EToken[][] board){
 		boolean isOpp, isMine;
-		int runningTotal= 0, myPoints = 0, oppPoints =0;
+		int runningTotal= 0, myPoints = 0, oppPoints =0; 
 		for(int i=board[0].length; i > -1 ; i++){
 			for(int j=0; j < board.length; j++){
 				isMine = false;
@@ -229,7 +230,7 @@ public class ConnectNAI {
 						myPoints += gameBoardWeight[i-k][j+k];
 					}
 					if(/*board[i-k][j+k] is opp */){
-						isOpp = true;
+						isOpp = true; 
 						oppPoints += gameBoardWeight[i-k][j+k];
 					}
 					if(isMine && isOpp){
@@ -240,88 +241,88 @@ public class ConnectNAI {
 					runningTotal += myPoints;
 				}
 				if(isOpp && !isMine){
-					runningTotal += oppPoints;
+					runningTotal += oppPoints; 
 				}
 			}
 		}
-
+		 
 		return runningTotal;
 	}
-
-	//horizontal scan
+	
+	//horizontal scan 
 	private int horizontalEval(EToken[][] board){
 		int horizontal = board.length;
 		int vertical = board[0].length;
-		int runningTotal = 0, myTotal = 0, oppTotal = 0;
+		int runningTotal = 0, myTotal = 0, oppTotal = 0; 
 		boolean isMyPoints;
 		boolean isOppPoints;
 		for(int i = vertical-1; i > -1; i--){
 			myTotal = 0;
-			oppTotal = 0;
+			oppTotal = 0; 
 			isMyPoints = false;
 			isOppPoints = false;
 			for(int j = 0; j <= horizontal - CONNECT; j++ )
 				for(int k = j; k < CONNECT; k++){
 					//if board[i][k] == EToken.ME{
-					isMyPoints = true;
-					myTotal += gameBoardWeight[i][k];
-
+						isMyPoints = true;
+						myTotal += gameBoardWeight[i][k];
+						
 					//if == EToken.OPP
-					isOppPoints = true;
-					oppTotal -= gameBoardWeight[i][k];
+						isOppPoints = true;
+						oppTotal -= gameBoardWeight[i][k];
 					if(isOppPoints && isMyPoints)
 						break;
 				}
-			if(isOppPoints){
-				runningTotal += oppTotal;
-			}
-
-			if(isMyPoints){
-				runningTotal +=  myTotal;
-			}
-
+				if(isOppPoints){
+					runningTotal += oppTotal;
+				}
+				
+				if(isMyPoints){
+					runningTotal +=  myTotal;
+				}
+					
 		}
-
+		
 		return runningTotal;
 	}
-
-	//vertical scan
+	
+	//vertical scan 
 	private int verticalEval(EToken[][] board){
 		int horizontal = board.length;
 		int vertical = board[0].length;
-		int runningTotal = 0, myTotal = 0, oppTotal = 0;
+		int runningTotal = 0, myTotal = 0, oppTotal = 0; 
 		boolean isMyPoints;
 		boolean isOppPoints;
 		for(int i = horizontal-1; i > -1; i--){
 			isMyPoints = false;
 			isOppPoints = false;
 			myTotal = 0;
-			oppTotal = 0;
+			oppTotal = 0; 
 			for(int j = 0; j <= vertical - CONNECT; j++ )
 				for(int k = j; k < CONNECT; k++){
 					//if board[i][k] == EToken.ME{
-					isMyPoints = true;
-					myTotal += gameBoardWeight[i][k];
-
+						isMyPoints = true;
+						myTotal += gameBoardWeight[i][k];
+						
 					//if == EToken.OPP
-					isOppPoints = true;
-					oppTotal -= gameBoardWeight[i][k];
+						isOppPoints = true;
+						oppTotal -= gameBoardWeight[i][k];
 					if(isOppPoints && isMyPoints)
 						break;
 				}
-			if(isOppPoints){
-				runningTotal += oppTotal;
-			}
-
-			if(isMyPoints){
-				runningTotal += myTotal;
-			}
+				if(isOppPoints){
+					runningTotal += oppTotal;
+				}
+				
+				if(isMyPoints){
+					runningTotal += myTotal;
+				}		
 		}
-
+		
 		return runningTotal;
 	}
 
-
+	
 	//Assigns weighted values to each space based on board size
 	private int[][] assignWeight(EToken[][] board){
 		int horizontal = board.length;
@@ -331,7 +332,7 @@ public class ConnectNAI {
 			int max_weight_index = horizontal/2;
 			for(int i=0; i < max_weight_index; i++){
 				boardWeight[i][0] = (i * 3) + 1;
-				boardWeight[horizontal-i-1][0] = (i * 3) + 1;
+				boardWeight[horizontal-i-1][0] = (i * 3) + 1; 
 			}
 			boardWeight[max_weight_index][0] = (max_weight_index *3) + 1;
 			boardWeight[max_weight_index -1][0] = (max_weight_index *3) + 1;
@@ -340,22 +341,22 @@ public class ConnectNAI {
 			int max_weight_index = (int) (horizontal/2 -.5);
 			for(int i=0; i < max_weight_index; i++){
 				boardWeight[i][0] = (i * 3) + 1;
-				boardWeight[horizontal-i-1][0] = (i * 3) + 1;
+				boardWeight[horizontal-i-1][0] = (i * 3) + 1; 
 			}
 			boardWeight[max_weight_index][0] = (max_weight_index *3) + 1;
-
+			
 		}
-
+		
 		for (int i=1; i < horizontal-1; i++){
 			for (int j=1; j< vertical-1; j++){
 				boardWeight[i][j] = boardWeight[0][j] + boardWeight[i][0];
 			}
 		}
-
+			
 		return boardWeight;
-
+		
 	}
-
+	
 	public static void main(String[] args){
 		new ConnectNAI();
 	}
