@@ -4,11 +4,11 @@ import java.util.ArrayList;
 public class ConnectNAI {
 	
 	private static final int DEPTH = 3;
-	private static final int CONNECT = 4;
 
 	//Game tracker
 	private boolean meHasPopped;
 	private boolean opponentHasPopped;
+	private int winningLength; 
 	
 	//AI tracker
 	private boolean ai_meHasPopped;
@@ -183,7 +183,7 @@ public class ConnectNAI {
 				isOpp= false;
 				myPoints=0;
 				oppPoints=0;
-				for(int k=0; k < CONNECT; k++){
+				for(int k=0; k < winningLength; k++){
 					if(board[i-k][j-k] == EToken.ME){
 						isMine = true;
 						myPoints += gameBoardWeight[i-k][j-k];
@@ -217,7 +217,7 @@ public class ConnectNAI {
 				isOpp= false;
 				myPoints=0;
 				oppPoints=0;
-				for(int k=0; k < CONNECT; k++){
+				for(int k=0; k < winningLength; k++){
 					if(board[i-k][j+k] == EToken.ME){
 						isMine = true;
 						myPoints += gameBoardWeight[i-k][j+k];
@@ -254,8 +254,8 @@ public class ConnectNAI {
 			oppTotal = 0;
 			isMyPoints = false;
 			isOppPoints = false;
-			for(int j = 0; j <= horizontal - CONNECT; j++ )
-				for(int k = j; k < CONNECT; k++){
+			for(int j = 0; j <= horizontal - winningLength; j++ )
+				for(int k = j; k < winningLength; k++){
 					//if board[i][k] == EToken.ME{
 					isMyPoints = true;
 					myTotal += gameBoardWeight[i][k];
@@ -291,8 +291,8 @@ public class ConnectNAI {
 			isOppPoints = false;
 			myTotal = 0;
 			oppTotal = 0;
-			for(int j = 0; j <= vertical - CONNECT; j++ )
-				for(int k = j; k < CONNECT; k++){
+			for(int j = 0; j <= vertical - winningLength; j++ )
+				for(int k = j; k < winningLength; k++){
 					//if board[i][k] == EToken.ME{
 					isMyPoints = true;
 					myTotal += gameBoardWeight[i][k];
@@ -315,12 +315,30 @@ public class ConnectNAI {
 		return runningTotal;
 	}
 
-
 	//Assigns weighted values to each space based on board size
 	private int[][] assignWeight(int horizontal, int vertical){
 		int[][] boardWeight = new int[vertical][horizontal];
 		if(horizontal % 2 == 0){
 			int max_weight_index = horizontal/2;
+			for(int i=0; i < max_weight_index; i++){
+				boardWeight[0][i] = (i * 3) + 1;
+				boardWeight[0][horizontal-i-1] = (i * 3) + 1;
+			}
+			boardWeight[0][max_weight_index] = (max_weight_index *3) + 1;
+			boardWeight[0][max_weight_index -1] = (max_weight_index *3) + 1;
+		}
+		else{
+			int max_weight_index = (int) (horizontal/2 -.5);
+			for(int i=0; i < max_weight_index; i++){
+				boardWeight[0][i] = (i * 3) + 1;
+				boardWeight[0][horizontal-i-1] = (i * 3) + 1;
+			}
+			boardWeight[0][max_weight_index] = (max_weight_index *3) + 1;
+
+		}
+		
+		if(vertical % 2 == 0){
+			int max_weight_index = vertical/2;
 			for(int i=0; i < max_weight_index; i++){
 				boardWeight[i][0] = (i * 3) + 1;
 				boardWeight[horizontal-i-1][0] = (i * 3) + 1;
@@ -329,7 +347,7 @@ public class ConnectNAI {
 			boardWeight[max_weight_index -1][0] = (max_weight_index *3) + 1;
 		}
 		else{
-			int max_weight_index = (int) (horizontal/2 -.5);
+			int max_weight_index = (int) (vertical/2 -.5);
 			for(int i=0; i < max_weight_index; i++){
 				boardWeight[i][0] = (i * 3) + 1;
 				boardWeight[horizontal-i-1][0] = (i * 3) + 1;
@@ -340,7 +358,7 @@ public class ConnectNAI {
 
 		for (int i=1; i < horizontal-1; i++){
 			for (int j=1; j< vertical-1; j++){
-				boardWeight[i][j] = boardWeight[0][j] + boardWeight[i][0];
+				boardWeight[j][i] = boardWeight[j][0] + boardWeight[0][i];
 			}
 		}
 
