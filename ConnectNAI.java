@@ -1,35 +1,61 @@
 import java.util.ArrayList;
+import java.util.Scanner;
 
 
 public class ConnectNAI {
 	
 	private static final int DEPTH = 3;
-	private static final int CONNECT = 4;
 
 	//Game tracker
 	private boolean meHasPopped;
 	private boolean opponentHasPopped;
+	private EToken[][] gameBoard;
+	private int winningLength;
 	
 	//AI tracker
 	private boolean ai_meHasPopped;
-	private boolean ai_opponentHasPopped;
+	private boolean ai_opponentHasPopped;	
 	private EToken[][] candidateBoard;
 	private int[][] gameBoardWeight;
+	private int timeLimit;
 
 	public ConnectNAI(){
 		this.meHasPopped = false;
 		this.opponentHasPopped = false;
-		this.boardWeightExecuted = false;
 		this.manageRefereeInteractions();
 	}
 	
 	// Handles all interaction between the referee and the AI
 	private void manageRefereeInteractions(){
-		//TODO [PAT]
+		String name = "Pat and Fiona";
+		//Give name to referee
+		System.out.println(name);
+		
+		//Get game metadata
+		Scanner scanner = new Scanner(System.in);
+		String input = scanner.nextLine();
+		int nameIndex = input.indexOf(name);
+		int playerNumber = Integer.parseInt(input.substring(nameIndex-3,nameIndex-2));
+		int boardHeight = scanner.nextInt();
+		int boardWidth = scanner.nextInt();
+		this.winningLength = scanner.nextInt();
+		int firstPlayer = scanner.nextInt();
+		this.timeLimit = scanner.nextInt();
+		
+		//Create board
+		this.gameBoard = new EToken[boardHeight][boardWidth];
+		
+		//Create weight-board
+		this.gameBoardWeight = this.assignWeight(boardWidth, boardHeight);
+		
+		if(playerNumber == firstPlayer)
+			miniMax(this.gameBoard,Integer.MIN_VALUE,Integer.MAX_VALUE,ConnectNAI.DEPTH);
 		
 		//.....Somewhere goes:
 			this.miniMax(null,0,0,0);
 			candidateBoard.notify();
+		
+		scanner.close();
 	}
 	
 	//Initializes mini-max process
@@ -183,7 +209,7 @@ public class ConnectNAI {
 				isOpp= false;
 				myPoints=0;
 				oppPoints=0;
-				for(int k=0; k < CONNECT; k++){
+				for(int k=0; k < this.winningLength; k++){
 					if(board[i-k][j-k] == EToken.ME){
 						isMine = true;
 						myPoints += gameBoardWeight[i-k][j-k];
@@ -217,7 +243,7 @@ public class ConnectNAI {
 				isOpp= false;
 				myPoints=0;
 				oppPoints=0;
-				for(int k=0; k < CONNECT; k++){
+				for(int k=0; k < this.winningLength; k++){
 					if(board[i-k][j+k] == EToken.ME){
 						isMine = true;
 						myPoints += gameBoardWeight[i-k][j+k];
@@ -254,8 +280,8 @@ public class ConnectNAI {
 			oppTotal = 0;
 			isMyPoints = false;
 			isOppPoints = false;
-			for(int j = 0; j <= horizontal - CONNECT; j++ )
-				for(int k = j; k < CONNECT; k++){
+			for(int j = 0; j <= horizontal - this.winningLength; j++ )
+				for(int k = j; k < this.winningLength; k++){
 					//if board[i][k] == EToken.ME{
 					isMyPoints = true;
 					myTotal += gameBoardWeight[i][k];
@@ -291,8 +317,8 @@ public class ConnectNAI {
 			isOppPoints = false;
 			myTotal = 0;
 			oppTotal = 0;
-			for(int j = 0; j <= vertical - CONNECT; j++ )
-				for(int k = j; k < CONNECT; k++){
+			for(int j = 0; j <= vertical - this.winningLength; j++ )
+				for(int k = j; k < this.winningLength; k++){
 					//if board[i][k] == EToken.ME{
 					isMyPoints = true;
 					myTotal += gameBoardWeight[i][k];
