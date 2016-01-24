@@ -16,7 +16,6 @@ public class ConnectNAI {
 	private EToken[][] candidateBoard;
 	private int[][] gameBoardWeight;
 
-
 	public ConnectNAI(){
 		this.meHasPopped = false;
 		this.opponentHasPopped = false;
@@ -155,17 +154,12 @@ public class ConnectNAI {
 		
 		return newBoard;
 	}
-	
-
 
 	//Evaluates current board based on connectedness using values from boardWeight
 	private int eval(EToken[][] board){
-			int totalEval = 0;
-			if(!boardWeightExecuted){
-				assignWeight(board);
-			}
+			
 			//horizontal scan
-			totalEval += horizontalEval(board);
+			int totalEval = horizontalEval(board);
 
 			//vertical scan
 			totalEval += verticalEval(board);
@@ -190,11 +184,11 @@ public class ConnectNAI {
 				myPoints=0;
 				oppPoints=0;
 				for(int k=0; k < CONNECT; k++){
-					if(/*board[i-k][j-k] is me */){
+					if(board[i-k][j-k] == EToken.ME){
 						isMine = true;
 						myPoints += gameBoardWeight[i-k][j-k];
 					}
-					if(/*board[i-k][j-k] is opp */){
+					if(board[i-k][j-k] == EToken.OPPONENT){
 						isOpp = true;
 						oppPoints += gameBoardWeight[i-k][j-k];
 					}
@@ -205,13 +199,13 @@ public class ConnectNAI {
 				if(isMine && !isOpp){
 					runningTotal += myPoints;
 				}
-				if(isOpp && !isMine){
+				else if(isOpp && !isMine){
 					runningTotal += oppPoints;
 				}
 			}
 		}
+		return runningTotal;
 	}
-
 
 	//diagonal scan left to right
 	private int diagonalLeftEval(EToken[][] board){
@@ -224,11 +218,11 @@ public class ConnectNAI {
 				myPoints=0;
 				oppPoints=0;
 				for(int k=0; k < CONNECT; k++){
-					if(/*board[i-k][j+k] is me */){
+					if(board[i-k][j+k] == EToken.ME){
 						isMine = true;
 						myPoints += gameBoardWeight[i-k][j+k];
 					}
-					if(/*board[i-k][j+k] is opp */){
+					if(board[i-k][j+k] == EToken.OPPONENT){
 						isOpp = true;
 						oppPoints += gameBoardWeight[i-k][j+k];
 					}
@@ -323,10 +317,8 @@ public class ConnectNAI {
 
 
 	//Assigns weighted values to each space based on board size
-	private int[][] assignWeight(EToken[][] board){
-		int horizontal = board.length;
-		int vertical = board[0].length;
-		int[][] boardWeight = new int[board.length][board[0].length];
+	private int[][] assignWeight(int horizontal, int vertical){
+		int[][] boardWeight = new int[vertical][horizontal];
 		if(horizontal % 2 == 0){
 			int max_weight_index = horizontal/2;
 			for(int i=0; i < max_weight_index; i++){
