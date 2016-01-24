@@ -98,30 +98,31 @@ public class ConnectNAI {
 	}
 	
 	//Executes logic for 'min player' turn
-	private int min(EToken[][] board, int alpha, int beta, int depthGoal, int currentDepth){
+	private Move min(Move move, int alpha, int beta, int depthGoal, int currentDepth){
 		if(depthGoal==currentDepth)
 			return eval(board);
 		
 		//Build array of potential moves
-		ArrayList<EToken[][]> children = new ArrayList<EToken[][]>();
+		ArrayList<Move> children = new ArrayList<EToken[][]>();
 		for(int i=0; i<board[0].length; i++){
 			if(canPlace(board,i,true))
-				children.add(this.place(board,i,true));
+				children.add(new Move(this.place(board,i,true),i,1));
 			if(canPop(board,i,true))
-				children.add(this.pop(board,i,true));
+				children.add(new Move(this.pop(board,i,true),i,0));
 		}
 		
 		//Evaluate moves
 		int currentScore = Integer.MAX_VALUE;
-		for(EToken[][] candidateBoard:children){
-			currentScore = Math.min(currentScore, max(candidateBoard,alpha,beta,depthGoal,currentDepth+1));
+		for(Move candidateMove:children){
+			Move maxMove = max(candidateMove,alpha,beta,depthGoal,currentDepth+1);
+			currentScore = Math.min(currentScore, maxMove.getScore());
 			beta = Math.min(currentScore, beta);
 			
 			//Prune
 			if(alpha > beta)
-				return currentScore;
+				return maxMove;
 		}
-		return currentScore;
+		return maxMove;
 	}
 	
 	//Determines if a 'place' move is legal or not
