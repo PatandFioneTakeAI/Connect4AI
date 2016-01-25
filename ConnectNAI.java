@@ -1,8 +1,11 @@
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Scanner;
 
 public class ConnectNAI {
-	
+
 	private static final int DEPTH = 3;
 	private static final int WIN = 10000;
 	private static final int LOSE = -10000;
@@ -12,68 +15,62 @@ public class ConnectNAI {
 	private boolean opponentHasPopped;
 	private EToken[][] gameBoard;
 	private int winningLength;
-	
+
 	//AI tracker
 	private boolean ai_meHasPopped;
 	private boolean ai_opponentHasPopped;
 	private int[][] gameBoardWeight;
 	private int timeLimit;
-	
-	public ConnectNAI(){
+
+	public ConnectNAI() throws Exception{
 		this.meHasPopped = false;
 		this.opponentHasPopped = false;
 		this.manageRefereeInteractions();
 	}
 	
-	private void printGameBoard(){
-		for(int col=0;col<gameBoard.length;col++){
-			for(int row=0;row<gameBoard[col].length;row++){
-				if(gameBoard[col][row]==EToken.EMPTY)
-					System.out.print("-");
-				else if(gameBoard[col][row]==EToken.ME)
-					System.out.print("X");
-				else if(gameBoard[col][row]==EToken.OPPONENT)
-					System.out.print("O");
-			}
-			System.out.println();
-		}
-		System.out.println("\n");
-	}
-	
 	// Handles all interaction between the referee and the AI
-	private void manageRefereeInteractions(){
-		String name = "Pat and Fiona";
+	private void manageRefereeInteractions() throws Exception{
+		String name = "Pat and Fiona\n";
 		//Give name to referee
-		System.out.println(name);
-		
+		System.out.print(name);
+		System.out.flush();
+
 		//Get game metadata
-		Scanner scanner = new Scanner(System.in);
-		String input = scanner.nextLine();
+		BufferedReader scanner = new BufferedReader(
+	            new InputStreamReader(System.in));
+		String input = scanner.readLine();
 		int nameIndex = input.indexOf(name);
 		int playerNumber = Integer.parseInt(input.substring(nameIndex-3,nameIndex-2));
-		int boardHeight = scanner.nextInt();
-		int boardWidth = scanner.nextInt();
-		this.winningLength = scanner.nextInt();
-		int firstPlayer = scanner.nextInt();
-		this.timeLimit = scanner.nextInt();
-		
+		String[] metadata = scanner.readLine().split(" ");
+		int boardHeight = Integer.parseInt(metadata[0]);
+		int boardWidth = Integer.parseInt(metadata[1]);
+		this.winningLength = Integer.parseInt(metadata[2]);
+		int firstPlayer = Integer.parseInt(metadata[3]);
+		this.timeLimit = Integer.parseInt(metadata[4]);
+
 		//Create board
 		this.gameBoard = new EToken[boardHeight][boardWidth];
-		
+		for(int col=0;col<this.gameBoard.length;col++){
+			for(int row=0;row<this.gameBoard[col].length;row++){
+				this.gameBoard[col][row] = EToken.EMPTY;
+			}
+		}
+
 		//Create weight-board
 		this.gameBoardWeight = this.assignWeight(boardWidth, boardHeight);
-		
+
 		if(playerNumber == firstPlayer){
-			Move move = miniMax(this.gameBoard,Integer.MIN_VALUE,Integer.MAX_VALUE,ConnectNAI.DEPTH);
+			Move move = miniMax(this.gameBoard,ConnectNAI.DEPTH);
 			this.gameBoard = move.getBoard();
-			System.out.println(move.getInstructions());
-			printGameBoard();
+			System.out.print(move.getInstructions());
+			System.out.flush();
 		}
 		
 		//while win condition
 		while(true){			
 			//Process Opponent Move
-			String[] opponentMove = scanner.nextLine().split(" ");
+			String scannerInput = scanner.readLine();
+			String[] opponentMove = scannerInput.split(" ");
 			int opponentColumn = Integer.parseInt(opponentMove[0]);
 			boolean isPop = opponentMove[1].equals("0");
 			if(isPop){
@@ -82,47 +79,48 @@ public class ConnectNAI {
 			}
 			else
 				this.gameBoard = this.place(this.gameBoard, opponentColumn, false);
-			
+
 			//If opponent won, quit
 			if(this.eval(gameBoard) == ConnectNAI.LOSE)
 				break;
-			
+
 			//Log if opponent Popped
 			this.ai_opponentHasPopped = this.opponentHasPopped;
-			
+
 			//Run minimax
-			Move move = miniMax(this.gameBoard,Integer.MIN_VALUE,Integer.MAX_VALUE,ConnectNAI.DEPTH);
+			Move move = miniMax(this.gameBoard,ConnectNAI.DEPTH);
 			this.gameBoard = move.getBoard();
 			if(move.isPop())
 				this.meHasPopped = true;
-			System.out.println(move.getInstructions());
+			System.out.print(move.getInstructions());
+			System.out.flush();
 
 			//Log if ai popped
 			this.ai_meHasPopped = this.meHasPopped;
-			
+
 			//If ai won, quit
 			if(move.getScore()==ConnectNAI.WIN)
 				break;
 		}
-		
+
 		scanner.close();
 	}
-	
+
 	//Initializes mini-max process
-	private Move miniMax(EToken[][] board, int alpha, int beta, int depth){
-		return this.max(new Move(board), alpha, beta, -ConnectNAI.DEPTH, 0);
+	private Move miniMax(EToken[][] board, int depth){
+		return this.max(new Move(board), Integer.MIN_VALUE, Integer.MAX_VALUE, ConnectNAI.DEPTH, ConnectNAI.DEPTH);
 	}
-	
+
 	//Executes logic for 'max player' turn
-	private Move max(Move move, int alpha, int beta, int depthGoal, int currentDepth){
-		Move minMove = null;
+	private Move max(Move move, int alpha, int beta, int currentDepth, int base){
 		EToken[][] board = move.getBoard();
-		
-		if(depthGoal==currentDepth){
+
+		//Leaf node
+		if(currentDepth==0){
 			move.setScore(eval(move.getBoard()));
 			return move;
 		}
-		
+
 		//Build array of potential moves
 		ArrayList<Move> children = new ArrayList<Move>();
 		for(int i=0; i<board[0].length; i++){
@@ -131,62 +129,76 @@ public class ConnectNAI {
 			if(canPop(board,i,true))
 				children.add(new Move(this.pop(board,i,true),i,0));
 		}
-		
+		EToken[][] temp = this.gameBoard;
+		for(Move m:children){
+			this.gameBoard = m.getBoard();
+		}
+		this.gameBoard = temp;
+
 		//Determine best move
 		int currentScore = Integer.MIN_VALUE;
 		Move bestMove = null;
+		Move minMove = null;
 		for(Move candidateMove:children){
-			minMove = min(candidateMove,alpha,beta,depthGoal,currentDepth+1);
+			minMove = min(candidateMove,alpha,beta,currentDepth-1,base);
 			if(minMove.getScore() > currentScore){
 				bestMove = minMove;
 				currentScore = Math.max(currentScore, minMove.getScore());
 			}
 			alpha = Math.max(currentScore, alpha);
-			
+
 			//Prune
-			if(alpha > beta)
-				return bestMove;
+			if(alpha > beta){
+				break;
+			}
 		}
-		return bestMove;
+		if(currentDepth == base)
+			return bestMove;
+		move.setScore(bestMove.getScore());
+		return move;
 	}
-	
+
 	//Executes logic for 'min player' turn
-	private Move min(Move move, int alpha, int beta, int depthGoal, int currentDepth){
+	private Move min(Move move, int alpha, int beta, int currentDepth, int base){
 		Move maxMove = null;
 		EToken[][] board = move.getBoard();
-		
-		if(depthGoal==currentDepth){
+
+		if(currentDepth==0){
 			move.setScore(eval(board));
 			return move;
 		}
-		
+
 		//Build array of potential moves
 		ArrayList<Move> children = new ArrayList<Move>();
 		for(int i=0; i<board[0].length; i++){
 			if(canPlace(board,i,true))
-				children.add(new Move(this.place(board,i,true),i,1));
+				children.add(new Move(this.place(board,i,false),i,1));
 			if(canPop(board,i,true))
-				children.add(new Move(this.pop(board,i,true),i,0));
+				children.add(new Move(this.pop(board,i,false),i,0));
 		}
-		
+
 		//Evaluate moves
 		int currentScore = Integer.MAX_VALUE;
 		Move bestMove = null;
 		for(Move candidateMove:children){
-			maxMove = max(candidateMove,alpha,beta,depthGoal,currentDepth+1);
+			maxMove = max(candidateMove,alpha,beta,currentDepth-1,base);
 			if(maxMove.getScore() < currentScore){
 				bestMove = maxMove;
 				currentScore = Math.min(currentScore, maxMove.getScore());
 			}
 			beta = Math.min(currentScore, beta);
-			
+
 			//Prune
-			if(alpha > beta)
-				return bestMove;
+			if(alpha > beta){
+				break;
+			}
 		}
-		return bestMove;
+		if(currentDepth == base)
+			return bestMove;
+		move.setScore(bestMove.getScore());
+		return move;
 	}
-	
+
 	//Determines if a 'place' move is legal or not
 	private boolean canPlace(EToken[][] board, int column, boolean isMax){
 		if(column < 0 || column > board[0].length)
@@ -198,7 +210,7 @@ public class ConnectNAI {
 		}
 		return false;
 	}
-	
+
 	//Determines if a 'pop' move is legal or not
 	private boolean canPop(EToken[][] board, int column, boolean isMax){
 		if(column < 0 || column > board[0].length)
@@ -208,82 +220,96 @@ public class ConnectNAI {
 		EToken bottomToken = board[board.length-1][column];
 		return bottomToken == (isMax ? EToken.ME : EToken.OPPONENT);
 	}
-	
+
 	//Executes 'place' move
 	private EToken[][] place(EToken[][] originalBoard, int column, boolean isMax){
 		int index = originalBoard.length-1;
 		while(originalBoard[index][column]!=EToken.EMPTY)
-			index++;
-		
+			index--;
+
+		//Clones board
 		EToken[][] newBoard = new EToken[originalBoard.length][originalBoard[0].length];
 		for(int i=0; i<originalBoard.length; i++){
 			newBoard[i] = originalBoard[i].clone();
 		}
-		
-		newBoard[index][column] = (isMax ? EToken.ME : EToken.OPPONENT);
+
+		if(isMax)
+			newBoard[index][column] = EToken.ME;
+		else
+			newBoard[index][column] = EToken.OPPONENT;
+		//newBoard[index][column] = (isMax ? EToken.ME : EToken.OPPONENT);
 		return newBoard;
 	}
-	
+
 	//Executes 'pop' move
 	private EToken[][] pop(EToken[][] originalBoard, int column, boolean isMax){
 		EToken[][] newBoard = new EToken[originalBoard.length][originalBoard[0].length];
 		for(int i=0; i<originalBoard.length; i++){
 			newBoard[i] = originalBoard[i].clone();
 		}
-		
-		for(int i=newBoard.length; i>=1; i--){
+
+		//Clones board
+		for(int i=newBoard.length-1; i>=1; i--){
 			newBoard[i][column] = newBoard[i-1][column];
 		}
 		newBoard[0][column] = EToken.EMPTY;
-		
+
 		if(isMax)
 			ai_meHasPopped = true;
 		else
 			ai_opponentHasPopped = true;
-		
+
 		return newBoard;
 	}
 
 	//Evaluates current board based on connectedness using values from boardWeight
 	private int eval(EToken[][] board){
-			
-			//horizontal scan
-			int totalEval = horizontalEval(board);
 
-			//vertical scan
-			totalEval += verticalEval(board);
+		//horizontal scan
+		int totalEval = horizontalEval(board);
 
-			//diagonal (L to R B to T)
-			totalEval += diagonalLeftEval(board);
+		//vertical scan
+		totalEval += verticalEval(board);
 
-			//diagonal (R to L B to T)
-			totalEval += diagonalRightEval(board);
+		//diagonal (L to R B to T)
+		totalEval += diagonalLeftEval(board);
 
-			if(totalEval > ConnectNAI.WIN)
-				return ConnectNAI.WIN;
-			
-			return totalEval;
-		}
+		//diagonal (R to L B to T)
+		totalEval += diagonalRightEval(board);
+
+		if(totalEval > ConnectNAI.WIN)
+			return ConnectNAI.WIN;
+
+		if(totalEval < ConnectNAI.LOSE)
+			return ConnectNAI.LOSE;
+
+		return totalEval;
+	}
 
 	//diagonal scan right to left
 	private int diagonalRightEval(EToken[][] board){
-		boolean isOpp, isMine;
+		boolean isOpp, isMine, containsSpace;
 		int runningTotal= 0, myPoints = 0, oppPoints =0;
-		for(int i= board[0].length; i > -1 ; i--){
-			for(int j = board.length -1 ; j > -1; j--){
+		for(int row=0; row < board.length - this.winningLength ; row++){
+			for(int col=0; col < board[0].length - this.winningLength; col++){
 				isMine = false;
 				isOpp= false;
 				myPoints=0;
 				oppPoints=0;
-				
-				for(int k=0; k < this.winningLength; k++){
-					if(board[i-k][j-k] == EToken.ME){
+				containsSpace = true;
+				for(int i=0; i < this.winningLength; i++){
+					if(board[row+i][col+i] == EToken.ME){
 						isMine = true;
-						myPoints += gameBoardWeight[i-k][j-k];
+						myPoints += gameBoardWeight[row+i][col+i];
 					}
-					if(board[i-k][j-k] == EToken.OPPONENT){
+					if(board[row+i][col+i] == EToken.OPPONENT){
 						isOpp = true;
-						oppPoints += gameBoardWeight[i-k][j-k];
+						oppPoints += gameBoardWeight[row+i][col+i];
+					}
+
+					if(board[row+i][col+i] == EToken.EMPTY){
+						containsSpace = true;
+
 					}
 					if(isMine && isOpp){
 						break;
@@ -295,6 +321,14 @@ public class ConnectNAI {
 				else if(isOpp && !isMine){
 					runningTotal += oppPoints;
 				}
+
+				if(isMine && !containsSpace){
+					runningTotal += ConnectNAI.WIN;
+				}
+
+				else if(isOpp && !containsSpace){
+					runningTotal += ConnectNAI.LOSE;
+				}
 			}
 		}
 		return runningTotal;
@@ -302,22 +336,28 @@ public class ConnectNAI {
 
 	//diagonal scan left to right
 	private int diagonalLeftEval(EToken[][] board){
-		boolean isOpp, isMine;
+		boolean isOpp, isMine, containsSpace;
 		int runningTotal= 0, myPoints = 0, oppPoints =0;
-		for(int i=board[0].length; i > -1 ; i++){
-			for(int j=0; j < board.length; j++){
+		for(int row=board.length-1; row >= this.winningLength ; row--){
+			for(int col=0; col < board[0].length-this.winningLength; col++){
 				isMine = false;
 				isOpp= false;
 				myPoints=0;
 				oppPoints=0;
-				for(int k=0; k < this.winningLength; k++){
-					if(board[i-k][j+k] == EToken.ME){
+				containsSpace = true;
+				for(int i=0; i < this.winningLength; i++){
+					if(board[row-i][col+i] == EToken.ME){
 						isMine = true;
-						myPoints += gameBoardWeight[i-k][j+k];
+						myPoints += gameBoardWeight[row-i][col+i];
 					}
-					if(board[i-k][j+k] == EToken.OPPONENT){
+					if(board[row-i][col+i] == EToken.OPPONENT){
 						isOpp = true;
-						oppPoints += gameBoardWeight[i-k][j+k];
+						oppPoints += gameBoardWeight[row-i][col+i];
+					}
+
+					if(board[row-i][col+i] == EToken.EMPTY){
+						containsSpace = true;
+
 					}
 					if(isMine && isOpp){
 						break;
@@ -326,8 +366,16 @@ public class ConnectNAI {
 				if(isMine && !isOpp){
 					runningTotal += myPoints;
 				}
-				if(isOpp && !isMine){
+				else if(isOpp && !isMine){
 					runningTotal += oppPoints;
+				}
+
+				if(isMine && !containsSpace){
+					runningTotal += ConnectNAI.WIN;
+				}
+
+				else if(isOpp && !containsSpace){
+					runningTotal += ConnectNAI.LOSE;
 				}
 			}
 		}
@@ -337,34 +385,47 @@ public class ConnectNAI {
 
 	//horizontal scan
 	private int horizontalEval(EToken[][] board){
-		int horizontal = board.length;
-		int vertical = board[0].length;
+		int vertical = board.length;
+		int horizontal = board[0].length;
 		int runningTotal = 0, myTotal = 0, oppTotal = 0;
-		boolean isMyPoints;
-		boolean isOppPoints;
+		boolean isMyPoints, isOppPoints, containsSpace;
+
 		for(int i = vertical-1; i > -1; i--){
 			myTotal = 0;
 			oppTotal = 0;
 			isMyPoints = false;
 			isOppPoints = false;
-			for(int j = 0; j <= horizontal - winningLength; j++ )
-				for(int k = j; k < winningLength; k++){
-					//if board[i][k] == EToken.ME{
-					isMyPoints = true;
-					myTotal += gameBoardWeight[i][k];
-
-					//if == EToken.OPP
-					isOppPoints = true;
-					oppTotal -= gameBoardWeight[i][k];
+			containsSpace = false; 
+			for(int j = 0; j < horizontal - winningLength; j++ )
+				for(int k = j; k < winningLength+j; k++){
+					if(board[i][k] == EToken.ME){
+						isMyPoints = true;
+						myTotal += gameBoardWeight[i][k];
+					}
+					if(board[i][k] == EToken.OPPONENT){
+						isOppPoints = true;
+						oppTotal -= gameBoardWeight[i][k];
+					}
+					if(board[i][k] == EToken.EMPTY){
+						containsSpace = true;
+					}
 					if(isOppPoints && isMyPoints)
 						break;
 				}
-			if(isOppPoints){
+			if(isOppPoints && !isMyPoints){
 				runningTotal += oppTotal;
 			}
 
-			if(isMyPoints){
+			else if(isMyPoints && !isOppPoints){
 				runningTotal +=  myTotal;
+			}
+
+			if(isMyPoints && !containsSpace){
+				runningTotal += ConnectNAI.WIN;
+			}
+
+			else if(isOppPoints && !containsSpace){
+				runningTotal += ConnectNAI.LOSE;
 			}
 
 		}
@@ -374,35 +435,48 @@ public class ConnectNAI {
 
 	//vertical scan
 	private int verticalEval(EToken[][] board){
-		int horizontal = board.length;
-		int vertical = board[0].length;
+		int horizontal = board[0].length;
+		int vertical = board.length;
 		int runningTotal = 0, myTotal = 0, oppTotal = 0;
-		boolean isMyPoints;
-		boolean isOppPoints;
-		for(int i = horizontal-1; i > -1; i--){
+		boolean isMyPoints, isOppPoints, containsSpace;
+		for(int col = horizontal-1; col >= 0; col--){
 			isMyPoints = false;
 			isOppPoints = false;
+			containsSpace = true; 
 			myTotal = 0;
 			oppTotal = 0;
-			
-			for(int j = 0; j <= vertical - this.winningLength; j++ )
-				for(int k = j; k < this.winningLength; k++){
-					//if board[i][k] == EToken.ME{
-					isMyPoints = true;
-					myTotal += gameBoardWeight[i][k];
 
-					//if == EToken.OPP
-					isOppPoints = true;
-					oppTotal -= gameBoardWeight[i][k];
+			for(int rowBase = 0; rowBase <= vertical - this.winningLength; rowBase++ )
+				for(int row = rowBase; row < this.winningLength; row++){
+					if(board[row][col] == EToken.ME){
+						isMyPoints = true;
+						myTotal += gameBoardWeight[row][col];
+					}
+					if(board[row][col] == EToken.OPPONENT){
+						isOppPoints = true;
+						oppTotal -= gameBoardWeight[row][col];
+					}
+					if(board[row][col] == EToken.EMPTY){
+						containsSpace = true;
+					}
+
 					if(isOppPoints && isMyPoints)
 						break;
 				}
-			if(isOppPoints){
+			if(isOppPoints && !isMyPoints){
 				runningTotal += oppTotal;
 			}
 
-			if(isMyPoints){
+			else if(isMyPoints && !isOppPoints){
 				runningTotal += myTotal;
+			}
+
+			if(isMyPoints && !containsSpace){
+				runningTotal += ConnectNAI.WIN;
+			}
+
+			else if(isOppPoints && !containsSpace){
+				runningTotal += ConnectNAI.LOSE;
 			}
 		}
 
@@ -412,55 +486,18 @@ public class ConnectNAI {
 	//Assigns weighted values to each space based on board size
 	private int[][] assignWeight(int horizontal, int vertical){
 		int[][] boardWeight = new int[vertical][horizontal];
-		if(horizontal % 2 == 0){
-			int max_weight_index = horizontal/2;
-			for(int i=0; i < max_weight_index; i++){
-				boardWeight[0][i] = (i * 3) + 1;
-				boardWeight[0][horizontal-i-1] = (i * 3) + 1;
-			}
-			boardWeight[0][max_weight_index] = (max_weight_index *3) + 1;
-			boardWeight[0][max_weight_index -1] = (max_weight_index *3) + 1;
-		}
-		else{
-			int max_weight_index = (int) (horizontal/2 -.5);
-			for(int i=0; i < max_weight_index; i++){
-				boardWeight[0][i] = (i * 3) + 1;
-				boardWeight[0][horizontal-i-1] = (i * 3) + 1;
-			}
-			boardWeight[0][max_weight_index] = (max_weight_index *3) + 1;
-
-		}
-		
-		if(vertical % 2 == 0){
-			int max_weight_index = vertical/2;
-			for(int i=0; i < max_weight_index; i++){
-				boardWeight[i][0] = (i * 3) + 1;
-				boardWeight[horizontal-i-1][0] = (i * 3) + 1;
-			}
-			boardWeight[max_weight_index][0] = (max_weight_index *3) + 1;
-			boardWeight[max_weight_index -1][0] = (max_weight_index *3) + 1;
-		}
-		else{
-			int max_weight_index = (int) (vertical/2 -.5);
-			for(int i=0; i < max_weight_index; i++){
-				boardWeight[i][0] = (i * 3) + 1;
-				boardWeight[horizontal-i-1][0] = (i * 3) + 1;
-			}
-			boardWeight[max_weight_index][0] = (max_weight_index *3) + 1;
-
-		}
-
-		for (int i=1; i < horizontal-1; i++){
-			for (int j=1; j< vertical-1; j++){
-				boardWeight[j][i] = boardWeight[j][0] + boardWeight[0][i];
+		for(int row=0; row<=vertical/2; row++){
+			for(int col=0; col<=horizontal/2; col++){
+				boardWeight[row][col] = 3 + (int)Math.pow(row,2) + (int)Math.pow(col, 2);
+				boardWeight[vertical - 1 - row][col] = 3 + (int)Math.pow(row,2) + (int)Math.pow(col, 2);
+				boardWeight[row][horizontal - 1 - col] = 3 + (int)Math.pow(row,2) + (int)Math.pow(col, 2);
+				boardWeight[vertical - 1 - row][horizontal - 1 - col] = 3 + (int)Math.pow(row,2) + (int)Math.pow(col, 2);
 			}
 		}
-
 		return boardWeight;
-
 	}
 
-	public static void main(String[] args){
+	public static void main(String[] args) throws Exception{
 		new ConnectNAI();
 	}
 }
