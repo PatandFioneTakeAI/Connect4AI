@@ -5,7 +5,7 @@ import java.util.ArrayList;
 
 public class ConnectNAI {
 
-	private static final int DEPTH = 5;
+	//Scores from board states that dictate a game over (draw if both present)
 	private static final int WIN = 10000;
 	private static final int LOSE = -ConnectNAI.WIN;
 
@@ -19,7 +19,7 @@ public class ConnectNAI {
 	private boolean ai_meHasPopped;
 	private boolean ai_opponentHasPopped;
 	private int[][] gameBoardWeight;
-	private int timeLimit;
+	private int DEPTH;
 
 	public ConnectNAI() throws Exception{
 		this.meHasPopped = false;
@@ -27,41 +27,33 @@ public class ConnectNAI {
 		this.manageRefereeInteractions();
 	}
 
-	private void printBoard(EToken[][] board){
-		for(EToken[] row:board){
-			for(EToken element:row){
-				if(element==EToken.ME)
-					System.out.print("X");
-				else if(element==EToken.OPPONENT)
-					System.out.print("O");
-				else
-					System.out.print("-");
-			}
-			System.out.println();
-		}
-		System.out.println();
-		System.out.flush();
-	}
-
 	// Handles all interaction between the referee and the AI
 	private void manageRefereeInteractions() throws Exception{
-		//String name = "Pat and Fiona";
+		String name = "Pat and Fiona" + (int)(Math.random()*1000);
 		//Give name to referee
-		//System.out.println(name);
-		//System.out.flush();
+		System.out.println(name);
+		System.out.flush();
 
 		//Get game metadata
 		BufferedReader scanner = new BufferedReader(
 				new InputStreamReader(System.in));
-		//String input = scanner.readLine();
-		//int nameIndex = input.indexOf(name);
-		//int playerNumber = Integer.parseInt(input.substring(nameIndex-3,nameIndex-2));
-		//String[] metadata = scanner.readLine().split(" ");
-		int boardHeight = 6;//Integer.parseInt(metadata[0]);
-		int boardWidth = 7;//Integer.parseInt(metadata[1]);
-		this.winningLength = 4;//Integer.parseInt(metadata[2]);
-		//int firstPlayer = Integer.parseInt(metadata[3]);
-		this.timeLimit = 15;//Integer.parseInt(metadata[4]);
+		String input = scanner.readLine();
+		int nameIndex = input.indexOf(name);
+		int playerNumber = Integer.parseInt(input.substring(nameIndex-3,nameIndex-2));
+		String[] metadata = scanner.readLine().split(" ");
+		int boardHeight = Integer.parseInt(metadata[0]);
+		int boardWidth = Integer.parseInt(metadata[1]);
+		this.winningLength = Integer.parseInt(metadata[2]);
+		int firstPlayer = Integer.parseInt(metadata[3]);
+		int timeLimit = Integer.parseInt(metadata[4]);
+		
+		//Assign depth to Minimax Algorithm based on tested time intervals
+		if(timeLimit == 1)
+			this.DEPTH = 3;
+		else if(timeLimit <= 26)
+			this.DEPTH = 4;
+		else
+			this.DEPTH = 5;
 
 		//Create board
 		this.gameBoard = new EToken[boardHeight][boardWidth];
@@ -73,9 +65,10 @@ public class ConnectNAI {
 
 		//Create weight-board
 		this.gameBoardWeight = this.assignWeight(boardWidth, boardHeight);
-
-		if(true){//playerNumber == firstPlayer){
-			Move move = miniMax(this.gameBoard,ConnectNAI.DEPTH);
+		
+		//If we are the first player, we go first
+		if(playerNumber == firstPlayer){
+			Move move = miniMax(this.gameBoard,this.DEPTH);
 			this.gameBoard = move.getBoard();
 			System.out.println(move.getInstructions());
 			System.out.flush();
@@ -83,11 +76,17 @@ public class ConnectNAI {
 
 		//while win condition
 		while(true){
-			System.out.println("Score: " + this.eval(gameBoard));
-			printBoard(gameBoard);
 
 			//Process Opponent Move
 			String scannerInput = scanner.readLine();
+			if(scannerInput.equalsIgnoreCase("win"))
+				break;
+			else if(scannerInput.equalsIgnoreCase("lose"))
+				break;
+			else if(scannerInput.equalsIgnoreCase("draw"))
+				break;
+			
+			//Execute opponent's move
 			String[] opponentMove = scannerInput.split(" ");
 			int opponentColumn = Integer.parseInt(opponentMove[0]);
 			boolean isPop = opponentMove[1].equals("0");
@@ -98,18 +97,11 @@ public class ConnectNAI {
 			else
 				this.gameBoard = this.place(this.gameBoard, opponentColumn, false);
 
-			//If opponent won, quit
-			if(this.eval(gameBoard) == ConnectNAI.LOSE)
-				break;
-
-			System.out.println("Score: " + this.eval(gameBoard));
-			printBoard(gameBoard);
-
 			//Log if opponent Popped
 			this.ai_opponentHasPopped = this.opponentHasPopped;
-
+			
 			//Run minimax
-			Move move = miniMax(this.gameBoard,ConnectNAI.DEPTH);
+			Move move = miniMax(this.gameBoard,this.DEPTH);
 			this.gameBoard = move.getBoard();
 			if(move.isPop())
 				this.meHasPopped = true;
@@ -118,19 +110,14 @@ public class ConnectNAI {
 
 			//Log if ai popped
 			this.ai_meHasPopped = this.meHasPopped;
-
-			//If ai won, quit
-			if(this.eval(this.gameBoard)==ConnectNAI.WIN)
-				break;
 		}
 
-		System.out.println("GAME OVER");
 		scanner.close();
 	}
 
 	//Initializes mini-max process
 	private Move miniMax(EToken[][] board, int depth){
-		return this.max(new Move(board), Integer.MIN_VALUE, Integer.MAX_VALUE, ConnectNAI.DEPTH, ConnectNAI.DEPTH);
+		return this.max(new Move(board), Integer.MIN_VALUE, Integer.MAX_VALUE, this.DEPTH, this.DEPTH);
 	}
 
 	//Executes logic for 'max player' turn
@@ -174,8 +161,10 @@ public class ConnectNAI {
 				break;
 			}
 		}
-		if(currentDepth == base)
+		if(currentDepth == base){
+			bestMove.setScore(eval(bestMove.getBoard()));
 			return bestMove;
+		}
 		move.setScore(bestMove.getScore());
 		return move;
 	}
@@ -304,80 +293,8 @@ public class ConnectNAI {
 
 		if(totalEval < ConnectNAI.LOSE)
 			return ConnectNAI.LOSE;
-
+		
 		return totalEval;
-	}
-
-	//diagonal scan bottomright to topleft
-	private int diagonalRightEval(EToken[][] board){
-		int runningTotal= 0, myPoints = 0, oppPoints =0, numMyTokens = 0, numOppTokens = 0;
-		for(int row=0; row < board.length - this.winningLength ; row++){
-			for(int col=0; col < board[0].length - this.winningLength; col++){
-				myPoints=0;
-				oppPoints=0;
-				numMyTokens=0;
-				numOppTokens=0;
-				for(int i=0; i < this.winningLength; i++){
-					if(board[row+i][col+i] == EToken.ME){
-						numMyTokens++;
-						myPoints += gameBoardWeight[row+i][col+i];
-					}
-					if(board[row+i][col+i] == EToken.OPPONENT){
-						numOppTokens++;
-						oppPoints += gameBoardWeight[row+i][col+i];
-					}if(numMyTokens > 0 && numOppTokens > 0)
-						break;
-				}
-				if(numMyTokens > 0 && numOppTokens > 0)
-					continue;
-				else if(numMyTokens == 4)
-					return ConnectNAI.WIN;
-				else if(numOppTokens == 4)
-					return ConnectNAI.LOSE;
-				else{
-					runningTotal += myPoints;
-					runningTotal += oppPoints;
-				}
-			}
-		}
-		return runningTotal;
-	}
-
-	//diagonal scan bottomleft to topright
-	private int diagonalLeftEval(EToken[][] board){
-		int runningTotal= 0, myPoints = 0, oppPoints =0, numMyTokens = 0, numOppTokens = 0;
-		for(int row=board.length-1; row >= this.winningLength ; row--){
-			for(int col=0; col < board[0].length-this.winningLength; col++){
-				myPoints=0;
-				oppPoints=0;
-				numMyTokens=0;
-				numOppTokens=0;
-				for(int i=0; i < this.winningLength; i++){
-					if(board[row-i][col+i] == EToken.ME){
-						numMyTokens++;
-						myPoints += gameBoardWeight[row-i][col+i];
-					}
-					if(board[row-i][col+i] == EToken.OPPONENT){
-						numOppTokens++;
-						oppPoints += gameBoardWeight[row-i][col+i];
-					}
-					if(numMyTokens > 0 && numOppTokens > 0)
-						break;
-				}
-				if(numMyTokens > 0 && numOppTokens > 0)
-					continue;
-				else if(numMyTokens == 4)
-					return ConnectNAI.WIN;
-				else if(numOppTokens == 4)
-					return ConnectNAI.LOSE;
-				else{
-					runningTotal += myPoints;
-					runningTotal += oppPoints;
-				}
-			}
-		}
-
-		return runningTotal;
 	}
 
 	//horizontal scan
@@ -387,23 +304,28 @@ public class ConnectNAI {
 		int runningTotal = 0, myTotal = 0, oppTotal = 0, numMyTokens = 0, numOppTokens = 0;
 
 		for(int i = vertical-1; i > -1; i--){
-			myTotal = 0;
-			oppTotal = 0;
-			numMyTokens = 0;
-			numOppTokens = 0;
-			for(int j = 0; j < horizontal - winningLength; j++ )
+			for(int j = 0; j < horizontal - winningLength + 1; j++ ){
+				myTotal = 0;
+				oppTotal = 0;
+				numMyTokens = 0;
+				numOppTokens = 0;
+				int mySectorTotal = 0;
+				int oppSectorTotal = 0;
 				for(int k = j; k < winningLength+j; k++){
 					if(board[i][k] == EToken.ME){
 						numMyTokens++;
-						myTotal += gameBoardWeight[i][k];
+						mySectorTotal += gameBoardWeight[i][k];
 					}
 					if(board[i][k] == EToken.OPPONENT){
 						numOppTokens++;
-						oppTotal -= gameBoardWeight[i][k];
+						oppSectorTotal -= gameBoardWeight[i][k];
 					}
 					if(numMyTokens > 0 && numOppTokens > 0)
 						break;
 				}
+				myTotal += mySectorTotal * numMyTokens;
+				oppTotal += oppSectorTotal * numOppTokens;
+			}
 			if(numMyTokens > 0 && numOppTokens > 0)
 				continue;
 			else if(numMyTokens == 4)
@@ -428,19 +350,24 @@ public class ConnectNAI {
 			oppTotal = 0;
 			numMyTokens = 0;
 			numOppTokens = 0;
-			for(int rowBase = 0; rowBase <= vertical - this.winningLength; rowBase++ )
-				for(int row = rowBase; row < this.winningLength; row++){
+			int mySectorTotal = 0;
+			int oppSectorTotal = 0;
+			for(int rowBase = 0; rowBase <= vertical - this.winningLength; rowBase++ ){
+				for(int row = rowBase; row < rowBase+this.winningLength; row++){
 					if(board[row][col] == EToken.ME){
 						numMyTokens++;
-						myTotal += gameBoardWeight[row][col];
+						mySectorTotal += gameBoardWeight[row][col];
 					}
 					if(board[row][col] == EToken.OPPONENT){
 						numOppTokens++;
-						oppTotal -= gameBoardWeight[row][col];
+						oppSectorTotal -= gameBoardWeight[row][col];
 					}
 					if(numMyTokens > 0 && numOppTokens > 0)
 						break;
 				}
+				myTotal += mySectorTotal * numMyTokens;
+				oppTotal += oppSectorTotal * numOppTokens;
+			}
 			if(numMyTokens > 0 && numOppTokens > 0)
 				continue;
 			else if(numMyTokens == 4)
@@ -452,6 +379,88 @@ public class ConnectNAI {
 				runningTotal += oppTotal;
 			}
 		}
+		return runningTotal;
+	}
+
+	//diagonal scan bottomright to topleft
+	private int diagonalRightEval(EToken[][] board){
+		int runningTotal= 0, myPoints = 0, oppPoints =0, numMyTokens = 0, numOppTokens = 0;
+		for(int row=0; row < board.length - this.winningLength+1 ; row++){
+			for(int col=0; col < board[0].length - this.winningLength+1; col++){
+				myPoints=0;
+				oppPoints=0;
+				numMyTokens=0;
+				numOppTokens=0;
+				int mySectorTotal = 0;
+				int oppSectorTotal = 0;
+				for(int i=0; i < this.winningLength; i++){
+					if(board[row+i][col+i] == EToken.ME){
+						numMyTokens++;
+						mySectorTotal += gameBoardWeight[row+i][col+i];
+					}
+					if(board[row+i][col+i] == EToken.OPPONENT){
+						numOppTokens++;
+						oppSectorTotal += gameBoardWeight[row+i][col+i];
+					}if(numMyTokens > 0 && numOppTokens > 0)
+						break;
+				}
+
+				myPoints += mySectorTotal * numMyTokens;
+				oppPoints += oppSectorTotal * numOppTokens;
+				if(numMyTokens > 0 && numOppTokens > 0)
+					continue;
+				else if(numMyTokens == 4)
+					return ConnectNAI.WIN;
+				else if(numOppTokens == 4)
+					return ConnectNAI.LOSE;
+				else{
+					runningTotal += myPoints;
+					runningTotal += oppPoints;
+				}
+			}
+		}
+		return runningTotal;
+	}
+
+	//diagonal scan bottomleft to topright
+	private int diagonalLeftEval(EToken[][] board){
+		int runningTotal= 0, myPoints = 0, oppPoints =0, numMyTokens = 0, numOppTokens = 0;
+		for(int row=board.length-1; row > board.length-this.winningLength ; row--){
+			for(int col=0; col < board[0].length-this.winningLength+1; col++){
+				myPoints=0;
+				oppPoints=0;
+				numMyTokens=0;
+				numOppTokens=0;
+				int mySectorTotal = 0;
+				int oppSectorTotal = 0;
+				for(int i=0; i < this.winningLength; i++){
+					if(board[row-i][col+i] == EToken.ME){
+						numMyTokens++;
+						mySectorTotal += gameBoardWeight[row-i][col+i];
+					}
+					if(board[row-i][col+i] == EToken.OPPONENT){
+						numOppTokens++;
+						oppSectorTotal += gameBoardWeight[row-i][col+i];
+					}
+					if(numMyTokens > 0 && numOppTokens > 0)
+						break;
+				}
+				myPoints += mySectorTotal * numMyTokens;
+				oppPoints += oppSectorTotal * numOppTokens;
+				if(numMyTokens > 0 && numOppTokens > 0)
+					continue;
+				else if(numMyTokens == 4)
+					return ConnectNAI.WIN;
+				else if(numOppTokens == 4)
+					return ConnectNAI.LOSE;
+				else{
+					runningTotal += myPoints;
+					runningTotal += oppPoints;
+				}
+			}
+
+		}
+
 		return runningTotal;
 	}
 
