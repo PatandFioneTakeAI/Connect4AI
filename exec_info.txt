@@ -1,0 +1,83 @@
+Fiona Heaney & Pat Lebold
+CS 4341 - Intro to AI
+Assignment 1 - Connect N 
+Due 1/24/16 11:59 PM
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+RUN: java -jar RefereeForDebug.jar "java -jar <Test player>" "java -jar Lebold_Heaney_project1.jar" <board_height> <board_width> <connect_n_factor> <time_limit_name> <time_limit_move> 
+
+
+BOARD HEURISTIC EXPLANATION: To evaluate our board we decided to assign each space on the board a weight based on the potential N in a row possibilities at the given spot multiplied by N pieces in a potential connect N combo. When initializing, we assign board weights in quadrants such that each elt [j][i] has value = 3+ i^2 + j^2
+
+i->        	<-i    
+j	|
+|	|
+v	|
+	|
+--------|---------
+	|
+	|
+	|
+^	|	
+|	
+j
+
+
+When evaluating, we scan the board in windows of N looking at all horizontal, vertical, diagonal (TLBR) and diagonal (BLTR) combinations. If the window contains a combination of ME pieces and spaces, the sum of each space is multipled by the number of pieces contained in the window (to account for connectedness) and added to the board score. Similarly, if the window contains a combination of OPPONENT pieces and spaces, the sum is calculated and subtracted from the board score. If the board contains all ME or OPPONENT pieces, that window is awarded +/- 10000 points respectively.
+
+So scanning with N=4 on a 5*5 board would look at  
+
+Horzontal	Vertical 	Diagonal TLBR		Diagonal BLTR 
+
+-----		-----		-----			-----
+-----		x----		-x---			---x-
+-----		x----		--x--			--x--
+-----		x----		---x-			-x---
+xxxx-		x----		----x			x----
+
+then
+
+----- 		-----		-----			-----
+----- 		-x---		x----			----x
+----- 		-x---		-x---			---x-
+----- 		-x---		--x--			--x--
+-xxxx 		-x---		---x-			-x---
+
+then
+
+----- 		-----		-x---			---x-
+----- 		--x--		--x--			--x--
+----- 		--x--		---x-			-x---
+xxxx- 		--x--		----x			x----
+----- 		--x--		-----			-----
+
+then
+
+-----  		-----		x----			----x
+-----  		---x-		-x---			---x-
+-----  		---x-		--x--			--x--
+-xxxx  		---x-		---x-			-x---
+-----  		---x-		-----			-----
+
+then
+
+      		----- 		
+      		----x	
+      		----x		
+      		----x		
+      		----x		
+
+then 
+
+      		x----		
+  		x----		
+      		x----		
+      		x----		
+      		-----		
+
+etc. 
+
+EXPERIMENTATION: We wanted to see what level depth we could run for given time intervals, so we ran our player against itself and looked at the microseconds it took for each evaluation to complete (5 - 50 microseconds on average) and multiplied this by a factor of 14. We chose 14 because on a 6*7 board, there are 14 possible moves (7 drops and 7 pops). From this we were able to declare a depth factor of 3 if the time allotted is one second. For any time frame from 2-26 seconds, we could evaluate depth level 4 at a worst case, and for anything over 26 seconds, we assigned a depth factor of 5. We understand that as the board grows to be larger and larger, the 14 evaluations no longer apply, but at that point we consider that we will have enough empty spaces not eligible for popping that will negate the difference. 
+
+
+
